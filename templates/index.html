@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PDF Password Brute Force</title>
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3143/3143460.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        :root {
+            --primary-color: #00ff9d;
+            --secondary-color: #0084ff;
+            --accent-color: #ff00c8;
+            --dark-bg: #0a0e17;
+            --darker-bg: #060a12;
+            --card-bg: #111927;
+            --text-color: #e0e0e0;
+            --text-bright: #ffffff;
+            --text-dim: #a0a0a0;
+            --success-color: #00ff9d;
+            --error-color: #ff0055;
+        }
+        
+        body {
+            font-family: 'SF Pro Display', 'Segoe UI', Arial, sans-serif;
+            background: var(--dark-bg);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        body::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(0, 132, 255, 0.1) 0%, transparent 30%),
+                radial-gradient(circle at 80% 70%, rgba(0, 255, 157, 0.1) 0%, transparent 30%),
+                radial-gradient(circle at 50% 50%, rgba(255, 0, 200, 0.05) 0%, transparent 60%);
+            z-index: -1;
+            pointer-events: none;
+        }
+        h2 {
+            margin-top: 40px;
+            color: var(--text-bright);
+            letter-spacing: 2px;
+            font-weight: 700;
+            text-transform: uppercase;
+            position: relative;
+            padding-bottom: 15px;
+            text-shadow: 0 0 10px rgba(0, 255, 157, 0.5);
+        }
+        
+        h2::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+            border-radius: 3px;
+        }
+        
+        .matrix-effect {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            opacity: 0.3;
+        }
+        form {
+            background: var(--card-bg);
+            padding: 32px 44px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            margin-top: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-width: 340px;
+            animation: fadeInUp 0.7s cubic-bezier(.39,.575,.565,1.000);
+            border: 1px solid rgba(0, 132, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        form::before {
+            content: "";
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            width: calc(100% + 4px);
+            height: calc(100% + 4px);
+            background: linear-gradient(45deg, var(--primary-color), var(--secondary-color), var(--accent-color), var(--primary-color));
+            z-index: -1;
+            animation: borderAnimation 8s linear infinite;
+            background-size: 400%;
+            filter: blur(10px);
+            opacity: 0.5;
+        }
+        
+        @keyframes borderAnimation {
+            0% { background-position: 0 0; }
+            50% { background-position: 100% 0; }
+            100% { background-position: 0 0; }
+        }
+        @keyframes fadeInUp {
+            0% { opacity: 0; transform: translateY(40px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+        
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+        label {
+            font-weight: 600;
+            color: var(--text-bright);
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 14px;
+        }
+        
+        label::before {
+            content: ">"; 
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+        input[type="file"] {
+            padding: 10px 8px;
+            border-radius: 6px;
+            border: 1.5px solid rgba(0, 132, 255, 0.3);
+            background: rgba(10, 14, 23, 0.8);
+            color: var(--text-color);
+            font-size: 15px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.2);
+            position: relative;
+            cursor: pointer;
+        }
+        
+        input[type="file"]:hover, input[type="file"]:focus {
+            border: 1.5px solid var(--primary-color);
+            box-shadow: 0 0 15px 0 rgba(0, 255, 157, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        input[type="file"]::file-selector-button {
+            background: linear-gradient(90deg, var(--secondary-color) 0%, var(--primary-color) 100%);
+            color: var(--text-bright);
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            margin-right: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        input[type="file"]::file-selector-button:hover {
+            background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            transform: scale(1.05);
+        }
+        button {
+            background: linear-gradient(90deg, var(--secondary-color) 0%, var(--primary-color) 100%);
+            color: var(--text-bright);
+            border: none;
+            padding: 13px 0;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            outline: none;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+        
+        button::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: all 0.5s ease;
+            z-index: -1;
+        }
+        
+        button:hover::before, button:focus::before {
+            left: 100%;
+        }
+        
+        button:hover, button:focus {
+            background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px 0 rgba(0, 255, 157, 0.3);
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+        }
+        ul {
+            margin-top: 20px;
+            color: var(--error-color);
+            list-style: none;
+            padding: 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        
+        ul li {
+            padding: 8px 12px;
+            background: rgba(255, 0, 85, 0.1);
+            border-left: 3px solid var(--error-color);
+            margin-bottom: 5px;
+            border-radius: 0 4px 4px 0;
+            animation: glitch 0.3s ease-in-out;
+        }
+        /* Loader styles */
+        .loader {
+            width: 60px;
+            height: 60px;
+            position: relative;
+            margin: 30px auto 0 auto;
+            display: none;
+        }
+        
+        .loader::before,
+        .loader::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            border-top-color: var(--primary-color);
+        }
+        
+        .loader::before {
+            z-index: 10;
+            animation: spin 1s infinite;
+        }
+        
+        .loader::after {
+            border: 3px solid transparent;
+            border-top-color: var(--secondary-color);
+            animation: spin 0.5s infinite reverse;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            text-align: center;
+            color: var(--primary-color);
+            font-weight: bold;
+            margin-top: 15px;
+            display: none;
+            font-size: 16px;
+            font-family: monospace;
+            letter-spacing: 1px;
+            position: relative;
+        }
+        
+        .loading-text::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, transparent 70%, var(--dark-bg));
+            animation: scanline 2s linear infinite;
+        }
+        .result-box {
+            background: var(--card-bg);
+            padding: 32px 44px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            margin-top: 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            align-items: center;
+            animation: fadeInUp 0.7s cubic-bezier(.39,.575,.565,1.000);
+            border: 1px solid rgba(0, 255, 157, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .result-box::before {
+            content: "";
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            width: calc(100% + 4px);
+            height: calc(100% + 4px);
+            background: linear-gradient(45deg, var(--success-color), var(--secondary-color), var(--success-color));
+            z-index: -1;
+            animation: borderAnimation 8s linear infinite;
+            background-size: 400%;
+            filter: blur(10px);
+            opacity: 0.5;
+        }
+        
+        .result-box h3 {
+            color: var(--success-color);
+            font-size: 22px;
+            margin-bottom: 0;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            position: relative;
+            display: inline-block;
+        }
+        
+        .result-box h3::before, .result-box h3::after {
+            content: "PASSWORD FOUND!";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.8;
+        }
+        
+        .result-box h3::before {
+            color: var(--accent-color);
+            z-index: -1;
+            animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) both infinite;
+            animation-delay: 0.1s;
+        }
+        
+        .result-box h3::after {
+            color: var(--secondary-color);
+            z-index: -2;
+            animation: glitch 0.3s cubic-bezier(.25, .46, .45, .94) reverse both infinite;
+            animation-delay: 0.2s;
+        }
+        
+        .result-box p {
+            font-size: 19px;
+            color: var(--text-bright);
+            font-family: monospace;
+            background: rgba(0, 255, 157, 0.1);
+            padding: 10px 20px;
+            border-radius: 4px;
+            border-left: 3px solid var(--success-color);
+            width: 100%;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        .result-box a {
+            display: inline-block;
+            margin-top: 10px;
+            background: linear-gradient(90deg, var(--secondary-color) 0%, var(--primary-color) 100%);
+            color: var(--text-bright);
+            text-decoration: none;
+            padding: 11px 26px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 16px;
+            box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .result-box a::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: all 0.5s ease;
+        }
+        
+        .result-box a:hover::before, .result-box a:focus::before {
+            left: 100%;
+        }
+        
+        .result-box a:hover, .result-box a:focus {
+            background: linear-gradient(90deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px 0 rgba(0, 255, 157, 0.3);
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+        }
+        footer {
+            margin-top: 60px;
+            margin-bottom: 30px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .coffee-btn {
+            display: inline-block;
+            background: linear-gradient(90deg, #ff9900 0%, #ff5500 100%);
+            color: var(--text-bright);
+            font-weight: bold;
+            text-decoration: none;
+            padding: 13px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+            border: none;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+        
+        .coffee-btn::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: all 0.5s ease;
+            z-index: -1;
+        }
+        
+        .coffee-btn:hover::before, .coffee-btn:focus::before {
+            left: 100%;
+        }
+        
+        .coffee-btn:hover, .coffee-btn:focus {
+            background: linear-gradient(90deg, #ff5500 0%, #ff9900 100%);
+            transform: translateY(-3px) rotate(-2deg);
+            box-shadow: 0 8px 25px 0 rgba(255, 85, 0, 0.3);
+            text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+        }
+        @media (max-width: 600px) {
+            form, .result-box {
+                min-width: unset;
+                width: 95vw;
+                padding: 18px 6vw;
+                border-radius: 14px;
+            }
+            h2 {
+                font-size: 20px;
+                margin-top: 22px;
+            }
+            .result-box h3 {
+                font-size: 18px;
+            }
+            .result-box p {
+                font-size: 15px;
+            }
+            button, .result-box a, .coffee-btn {
+                font-size: 15px;
+                padding: 11px 0;
+                border-radius: 12px;
+            }
+            .coffee-btn {
+                padding: 11px 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="matrixCanvas" class="matrix-effect"></canvas>
+    <h2>PDF Password Brute Force</h2>
+    <form id="pdfForm" method="post" enctype="multipart/form-data">
+        <label for="pdf">Upload Locked PDF:</label>
+        <input type="file" name="pdf" accept="application/pdf" required>
+        <button type="submit" id="submitBtn">Upload & Crack</button>
+    </form>
+    <div class="loader" id="loader"></div>
+    <div class="loading-text" id="loadingText">Cracking password, please wait...</div>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <ul>
+        {% for message in messages %}
+          <li>{{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    {% if password and unlocked_pdf %}
+    <div class="result-box">
+        <h3>Password Found!</h3>
+        <p><strong>Password:</strong> {{ password }}</p>
+        <a href="{{ url_for('download_file', filename=unlocked_pdf) }}">Download Unlocked PDF</a>
+    </div>
+    <audio id="notifSound" src="{{ url_for('static', filename='notification.wav') }}"></audio>
+    <script>
+        // পাসওয়ার্ড পাওয়া গেলে সাউন্ড প্লে
+        window.onload = function() {
+            var notif = document.getElementById('notifSound');
+            if (notif) {
+                notif.play().catch(()=>{});
+            }
+        }
+    </script>
+    {% endif %}
+    <script>
+        // Matrix effect
+        const canvas = document.getElementById('matrixCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Set canvas dimensions
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // Characters for matrix effect
+        const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+        const fontSize = 14;
+        const columns = Math.floor(canvas.width / fontSize);
+        
+        // Array to track the y position of each column
+        const drops = [];
+        for (let i = 0; i < columns; i++) {
+            drops[i] = Math.random() * -100;
+        }
+        
+        function drawMatrix() {
+            // Semi-transparent black to create fade effect
+            ctx.fillStyle = 'rgba(10, 14, 23, 0.05)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#00ff9d';
+            ctx.font = fontSize + 'px monospace';
+            
+            for (let i = 0; i < drops.length; i++) {
+                // Random character
+                const text = chars[Math.floor(Math.random() * chars.length)];
+                
+                // x coordinate of the drop
+                const x = i * fontSize;
+                // y coordinate of the drop
+                const y = drops[i] * fontSize;
+                
+                // Draw the character
+                ctx.fillText(text, x, y);
+                
+                // Reset drop to top with random delay if it's at the bottom
+                if (y > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                
+                // Move drop down
+                drops[i]++;
+            }
+        }
+        
+        // Run the animation
+        setInterval(drawMatrix, 50);
+        
+        // Form submission
+        const form = document.getElementById('pdfForm');
+        const loader = document.getElementById('loader');
+        const loadingText = document.getElementById('loadingText');
+        const submitBtn = document.getElementById('submitBtn');
+        form.addEventListener('submit', function() {
+            loader.style.display = 'block';
+            loadingText.style.display = 'block';
+            submitBtn.disabled = true;
+            
+            // Add typing effect to loading text
+            const originalText = "Cracking password, please wait...";
+            loadingText.textContent = "";
+            let charIndex = 0;
+            
+            function typeText() {
+                if (charIndex < originalText.length) {
+                    loadingText.textContent += originalText.charAt(charIndex);
+                    charIndex++;
+                    setTimeout(typeText, 50 + Math.random() * 50);
+                }
+            }
+            
+            typeText();
+        });
+    </script>
+    <footer>
+        <a href="https://coff.ee/dbaidya811e" target="_blank" class="coffee-btn">☕ Buy Me a Coffee</a>
+    </footer>
+</body>
+</html>
